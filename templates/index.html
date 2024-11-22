@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BTCUSDT Chart with MACD, SMA, and RSI</title>
+    <style>
+        #chart {
+            width: 100%;
+            height: 600px;
+        }
+        #rsi-chart {
+            width: 100%;
+            height: 150px;
+        }
+    </style>
+    <!-- Include Lightweight Charts library -->
+    <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <h2>BTCUSDT Daily Chart with MACD, SMA, and RSI</h2>
+    <div id="chart"></div>
+    <div id="rsi-chart"></div>
+
+    <script>
+        fetch('/data')
+            .then(response => response.json())
+            .then(data => {
+                // Split data into main chart and indicators
+                const candleData = data.map(item => ({
+                    time: item.time,
+                    open: item.open,
+                    high: item.high,
+                    low: item.low,
+                    close: item.close
+                }));
+
+                const smaData = data.map(item => ({
+                    time: item.time,
+                    value: item.sma
+                })).filter(item => item.value !== null);
+
+                const macdData = data.map(item => ({
+                    time: item.time,
+                    value: item.macd
+                }));
+
+                const signalData = data.map(item => ({
+                    time: item.time,
+                    value: item.signal
+                }));
+
+                const rsiData = data.map(item => ({
+                    time: item.time,
+                    value: item.rsi
+                })).filter(item => item.value !== null);
+
+                // Create the main chart
+                const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+                    width: window.innerWidth * 0.9,
+                    height: 600,
+                    layout: {
+                        backgroundColor: '#ffffff',
+                        textColor: '#000',
+                    },
+                    grid: {
+                        vertLines: {
+                            color: '#eee',
+                        },
+                        horzLines: {
+                            color: '#eee',
+                        },
+                    },
+                    timeScale: {
+                        timeVisible: true,
+                        secondsVisible: false,
+                    },
+                });
+
+                // Add candlestick series
+                const candleSeries = chart.addCandlestickSeries();
+                candleSeries.setData(candleData);
+
+                // Add SMA line series
+                const smaSeries = chart.addLineSeries({
+                    color: '#e91e63',
+                    lineWidth: 2,
+                });
+                smaSeries.setData(smaData);
+
+                // Add MACD as a separate overlay
+                const macdSeries = chart.addHistogramSeries({
+                    color: '#26a69a',
+                    priceFormat: {
+                        type: 'volume',
+                    },
+                    priceScaleId: '',
+                    scaleMargins: {
+                        top: 0.8,
+                        bottom: 0,
+                    },
+                });
+                macdSeries.setData(macdData);
+
+                const signalSeries = chart.addLineSeries({
+                    color: '#ef5350',
+                    lineWidth: 1,
+                    priceScaleId: '',
+                    scaleMargins: {
+                        top: 0.8,
+                        bottom: 0,
+                    },
+                });
+                signalSeries.setData(signalData);
+
+                // Create the RSI chart
+                const rsiChart = LightweightCharts.createChart(document.getElementById('rsi-chart'), {
+                    width: window.innerWidth * 0.9,
+                    height: 150,
+                    layout: {
+                        backgroundColor: '#ffffff',
+                        textColor: '#000',
+                    },
+                    grid: {
+                        vertLines: {
+                            color: '#eee',
+                        },
+                        horzLines: {
+                            color: '#eee',
+                        },
+                    },
+                    timeScale: {
+                        timeVisible: true,
+                        secondsVisible: false,
+                    },
+                });
+
+                // Add RSI line series
+                const rsiSeries = rsiChart.addLineSeries({
+                    color: '#f39c12',
+                    lineWidth: 2,
+                });
+                rsiSeries.setData(rsiData);
+
+                // Synchronize visible range
+                function synchronizeTimeScale(sourceChart, targetChart) {
+                    sourceChart.timeScale().subscribeVisibleTimeRangeChange((newVisibleRange) => {
+                        if (newVisibleRange !== null) {
+                            targetChart.timeScale().setVisibleRange(newVisibleRange);
+                        }
+                    });
+                }
+                synchronizeTimeScale(chart, rsiChart);
+                synchronizeTimeScale(rsiChart, chart);
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    chart.resize(window.innerWidth * 0.9, 600);
+                    rsiChart.resize(window.innerWidth * 0.9, 150);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+    </script>
+</body>
+</html>
